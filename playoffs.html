@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Winning Team and Playoffs Occurrences Bar Chart</title>
+  <script src="https://d3js.org/d3.v6.min.js"></script>
+  <style>
+    
+    body {
+    font: 14px sans-serif;
+    color: black;
+    text-align: center;
+    background-color: beige;
+    margin: 100;
+    padding: 100;
+    }
+
+    svg {
+    display: block;
+    margin: 0 auto;  
+    }
+
+    button {
+        background-color: #4CAF50; 
+        border: none;
+        color: white;
+        padding: 10px 15px;
+        text-align: center;
+        text-decoration: none;
+        display: inline-block;
+        font-size: 14px;
+    }
+    .bar {
+      fill: steelblue;
+    }
+    .bar-label {
+      fill: black;
+      font-size: 14px;
+      text-anchor: end;
+    }
+    .chart-container {
+      display: inline-block;
+    }
+    .average-line {
+      stroke: red;
+      stroke-width: 2;
+      stroke-dasharray: 5, 5;
+    }
+    .annotation-line {
+      stroke: red;
+      stroke-width: 2;
+    }
+    .annotation-text {
+      fill: red;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <h1>The Story of the biggest cricket league in the world: The Indian Premier League</h1>
+  <div> The Indian Premier League (IPL) began in 2008 and it took the cricketing world by storm. It revolutionized franchise cricket and added revenue, glamour and speed to the sport. <h4>But what does success look like in this league?</h4>
+    Through this narrative, we'll understand the history of the teams, their performances and dive deeper into the player statistics which give an understanding and comparison of some of the greats of the league. These scenes will build a narrative of success of teams and of players.
+    <br>
+    <br>
+  </div>
+
+  <div> <button onclick="window.location.href = 'line-chart-1.html';">
+    Next Page >>
+    </button></div>
+
+  <div>
+    <h2>The titles and the playoffs</h2>
+    <br>
+    Let's start off by analyzing the teams that have won the IPL as well as the ones that have made it to the playoffs. Keep in mind that some seasons had 8 teams, while others had 10, but in both cases the top 4 make it to the playoffs to fight it out to win the title. 
+    Over the course of 16 seasons, there have been 6 teams that have won titles. While there has been very good competition over the seasons, 2 teams: Chennai Super Kings and Mumbai Indians have won a combined total of 10 out of the 16 seasons. The first chart below give a breakdown of the titles wons by each team and second chart gives the number of times each team has reached the playoffs. This should help give an understanding of the success rate of certain teams over others and paint a general picture of the franchises mentioned.
+  </div>
+  <div>
+    <br>
+    <h4> Number of Titles won by teams</h3>
+  </div>
+  <div class="chart-container" id="winningChart">
+  </div>
+  <div>
+    <br>
+    <h4> Number of times each team reached the playoffs</h3>
+  </div>
+  <div class="chart-container" id="playoffsChart">
+  </div>
+
+  <script>
+
+    function countOccurrences(data, columns) {
+      const teamOccurrences = {};
+      columns.forEach((column) => {
+        data.forEach((d) => {
+          const team = d[column];
+          teamOccurrences[team] = (teamOccurrences[team] || 0) + 1;
+        });
+      });
+
+      const sortedOccurrences = Object.entries(teamOccurrences)
+        .sort((a, b) => b[1] - a[1]);
+
+      return sortedOccurrences;
+    }
+
+    function createHorizontalBarChart(data, chartDivId, columns) {
+      const teamOccurrences = countOccurrences(data, columns);
+
+      const margin = { top: 20, right: 450, bottom: 40, left: 160 };
+      const width = 1000 - margin.left - margin.right;
+      const height = 300 - margin.top - margin.bottom;
+
+      const svg = d3.select(`#${chartDivId}`)
+        .append("svg")
+        .attr("width", width + margin.left + margin.right)
+        .attr("height", height + margin.top + margin.bottom)
+        .append("g")
+        .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+      const yScale = d3.scaleBand()
+        .domain(teamOccurrences.map((d) => d[0]))
+        .range([0, height])
+        .padding(0.1);
+
+      const xScale = d3.scaleLinear()
+        .domain([0, d3.max(teamOccurrences, (d) => d[1])])
+        .range([0, width]);
+
+      const yAxis = d3.axisLeft(yScale);
+      const xAxis = d3.axisBottom(xScale).ticks(5);
+
+      svg.append("g")
+        .attr("class", "x-axis")
+        .attr("transform", "translate(0," + height + ")")
+        .call(xAxis);
+
+      svg.append("g")
+        .attr("class", "y-axis")
+        .call(yAxis);
+
+      svg.selectAll(".bar")
+        .data(teamOccurrences)
+        .enter()
+        .append("rect")
+        .attr("class", "bar")
+        .attr("y", (d) => yScale(d[0]))
+        .attr("x", 0)
+        .attr("height", yScale.bandwidth())
+        .attr("width", (d) => xScale(d[1]));
+
+      svg.selectAll(".bar-label")
+        .data(teamOccurrences)
+        .enter()
+        .append("text")
+        .attr("class", "bar-label")
+        .attr("x", (d) => xScale(d[1]) - 5)
+        .attr("y", (d) => yScale(d[0]) + yScale.bandwidth() / 2)
+        .attr("dy", "0.35em")
+        .text((d) => d[1]);
+
+      const totalOccurrences = teamOccurrences.reduce((sum, current) => sum + current[1], 0);
+      const averageOccurrences = totalOccurrences / teamOccurrences.length;
+
+      const topBar = teamOccurrences[0];
+      const secondBar = teamOccurrences[1];
+      const x1 = xScale(topBar[1]);
+      const y1 = yScale(topBar[0]) + yScale.bandwidth() / 2;
+      const x2 = 450;
+      const y2 = y1;
+
+      svg.append("line")
+        .attr("class", "annotation-line")
+        .attr("x1", x1 + 10)
+        .attr("y1", y1)
+        .attr("x2", x2)
+        .attr("y2", y2)
+        .attr("stroke", "red")
+        .attr("stroke-width", 2);
+      
+        svg.append("line")
+        .attr("class", "annotation-line")
+        .attr("x1", xScale(secondBar[1]) + 10)
+        .attr("y1", yScale(secondBar[0]) + yScale.bandwidth() / 2)
+        .attr("x2", x2)
+        .attr("y2", yScale(secondBar[0]) + yScale.bandwidth() / 2)
+        .attr("stroke", "red")
+        .attr("stroke-width", 2);
+        
+        svg.append("line")
+        .attr("class", "annotation-line")
+        .attr("x1", x2)
+        .attr("y1", yScale(topBar[0]) + yScale.bandwidth() / 2)
+        .attr("x2", x2)
+        .attr("y2", y2+140)
+        .attr("stroke", "red")
+        .attr("stroke-width", 2); 
+
+      svg.append("text")
+        .attr("class", "annotation-text")
+        .attr("x", x2 - 60)
+        .attr("y", y2 + 150)
+        .attr("dy", "0.35em")
+        .text("We see that 2 teams have dominated both wins and playoffs");
+
+    }
+
+    d3.csv("iplstats.csv").then((data) => {
+      const winningColumns = ['Winning team'];
+      const playoffsColumns = ['Winning team', 'runners up', 'playoff qualifying team 1', 'Playoff qualifying team 2'];
+      createHorizontalBarChart(data, "winningChart", winningColumns);
+      createHorizontalBarChart(data, "playoffsChart", playoffsColumns);
+    });
+  </script>
+</body>
+</html>

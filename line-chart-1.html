@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>D3.js Multi-line Chart</title>
+  <style>
+    #teamCheckboxes {
+      display: flex;
+      flex-wrap: wrap;
+    }
+
+    #teamCheckboxes div {
+      margin-right: 20px;
+    }
+
+    #tooltip {
+      position: absolute;
+      display: none;
+      padding: 8px;
+      background-color: rgba(0, 0, 0, 0.8);
+      color: white;
+      border-radius: 4px;
+      pointer-events: none;
+    }
+
+    body {
+    font: 14px sans-serif;
+    color: black;
+    text-align: center;
+    background-color: beige;
+    margin: 100;
+    padding: 100;
+    }
+
+    svg {
+    display: block;
+    margin: 0 auto;  
+    }
+
+    button {
+        background-color: #4CAF50; /* Green */
+        border: none;
+        color: white;
+        padding: 10px 15px;
+        text-align: center;
+        text-decoration: none;
+        display: inline-block;
+        font-size: 14px;
+    }
+
+    #teamCheckboxes {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-bottom: 20px;
+    }
+
+    #teamCheckboxes div {
+        margin-right: 20px;
+    }
+  </style>
+  <script src="https://d3js.org/d3.v6.min.js"></script>
+</head>
+<body>
+        <div> <button onclick="window.location.href = 'playoffs.html';">
+            << Previous Page
+        </button>
+    
+        <button onclick="window.location.href = 'scatterplot.html';">
+            Next Page >>
+            </button></div>   
+  <h1> Performance History </h1>
+    Now that we have a good understanding of how certain teams have dominated the playoffs and title wins over the seasons, we can dive a bit 
+    deeper into the performances of each team over each season. Below is a line chart which has all the seasons of the IPL on the x axis and rank on the y axis. This rank and be changed to the points scored in that season by clicking the button below.
+    There is also a set of checkboxes for each team in order to allow comparision of different teams and get a better understanding. You can also mouse over each data point to get the season and rank/points value for easy visibility.
+    <br> Through this chart, you can understand the trends of team, find out how over seasons, each team performed relative to the previous and find consistency or inconsistency patterns that may indicate why certain teams that we saw in the previous scene were extremely successful or unsuccessful.
+    <br>
+    <br>
+  <div>
+    <label>Toggle between points and rank: </label>
+    <button id="toggleYAxis">Rank</button>
+  </div>
+  <div>
+    <br>
+    <label>Select teams to display:</label>
+    <div>
+        
+      <input type="checkbox" id="chkAll" checked>
+      <label for="chkAll">Select All</label>
+    </div>
+    <div id="teamCheckboxes">
+    </div>
+  </div>
+  
+  <div id="chart"></div>
+  <div id="tooltip"></div>
+  <script>
+   
+    d3.csv("points_table.csv").then(function(data) {
+      
+      data = data.filter(d => !["PWI", "Kochi", "RPS", "GL"].includes(d.short_name));
+
+      data.sort((a, b) => d3.ascending(a.season, b.season));
+
+      const uniqueShortNames = Array.from(new Set(data.map(d => d.short_name)));
+
+      const checkboxesDiv = d3.select("#teamCheckboxes");
+      checkboxesDiv.selectAll("input")
+        .data(uniqueShortNames)
+        .enter()
+        .append("div")
+        .html(d => `
+          <input type="checkbox" id="chk${d}" class="teamCheckbox" value="${d}" checked>
+          <label for="chk${d}">${d}</label>
+        `);
+
+      const svg = d3.select("#chart")
+        .append("svg")
+        .attr("width", 800)
+        .attr("height", 400);
+
+      const xScale = d3.scaleBand()
+        .domain(data.map(d => d.season))
+        .range([50, 750])
+        .padding(0.1);
+
+      const yScaleRank = d3.scaleLinear()
+        .domain([d3.max(data, d => +d.rank), 1])
+        .range([350, 50]); 
+
+      const yScalePoints = d3.scaleLinear()
+        .domain([0, d3.max(data, d => +d.matchpoints)])
+        .range([350, 50]);
+
+      const colorScale = d3.scaleOrdinal()
+        .domain(uniqueShortNames)
+        .range(["#2f4f4f", "#ffc0cb", "#ffd700", "#add8e6", "#ff0000", "#808080", "#000000", "#dc143c", "#008000", "#ff8c00"]);
+
+      const lineRank = d3.line()
+        .x(d => xScale(d.season) + xScale.bandwidth() / 2)
+        .y(d => yScaleRank(+d.rank));
+
+      const linePoints = d3.line()
+        .x(d => xScale(d.season) + xScale.bandwidth() / 2)
+        .y(d => yScalePoints(+d.matchpoints));
+
+
+      function updateChart() {
+        const selectedTeams = checkboxesDiv.selectAll(".teamCheckbox:checked").nodes().map(checkbox => checkbox.value);
+
+        
+        const isRankSelected = d3.select("#toggleYAxis").text() === "Rank";
+        const yScale = isRankSelected ? yScaleRank : yScalePoints;
+        const line = isRankSelected ? lineRank : linePoints;
+
+        
+        const filteredData = data.filter(d => selectedTeams.includes(d.short_name));
+
+        
+        const filteredGroupedData = d3.group(filteredData, d => d.short_name);
+        const lines = svg.selectAll(".line")
+          .data(filteredGroupedData);
+
+        lines.enter()
+          .append("path")
+          .attr("class", "line")
+          .merge(lines)
+          .attr("d", d => line(d[1]))
+          .style("stroke", d => colorScale(d[0]))
+          .style("fill", "none");
+
+        lines.exit().remove();
+
+        const points = svg.selectAll(".point")
+          .data(filteredData);
+
+        points.enter()
+          .append("circle")
+          .attr("class", "point")
+          .attr("r", 4)
+          .merge(points)
+          .attr("cx", d => xScale(d.season) + xScale.bandwidth() / 2)
+          .attr("cy", d => yScale(isRankSelected ? +d.rank : +d.matchpoints))
+          .attr("fill", d => colorScale(d.short_name));
+
+        points.exit().remove();
+
+
+        const tooltip = d3.select("#tooltip");
+        svg.selectAll(".point")
+          .on("mouseover", function(event, d) {
+            const season = d.season;
+            const yValue = isRankSelected ? +d.rank : +d.matchpoints;
+            tooltip
+              .style("display", "block")
+              .style("left", (event.pageX + 10) + "px")
+              .style("top", (event.pageY - 30) + "px")
+              .html(`Season: ${season}<br>${isRankSelected ? "Rank" : "Points"}: ${yValue}`);
+          })
+          .on("mouseout", () => {
+            tooltip.style("display", "none");
+          });
+
+        svg.select(".y-axis")
+          .transition()
+          .duration(500)
+          .call(d3.axisLeft(yScale));
+      }
+
+
+      updateChart();
+
+      d3.select("#chkAll").on("change", function() {
+        const isChecked = this.checked;
+        checkboxesDiv.selectAll(".teamCheckbox").property("checked", isChecked);
+        updateChart();
+      });
+
+      checkboxesDiv.selectAll(".teamCheckbox").on("change", function() {
+        updateChart();
+      });
+
+      d3.select("#toggleYAxis").on("click", function() {
+        const isRankSelected = d3.select(this).text() === "Rank";
+        d3.select(this).text(isRankSelected ? "Points" : "Rank");
+        updateChart();
+      });
+
+      svg.append("g")
+        .attr("transform", "translate(0, 350)")
+        .call(d3.axisBottom(xScale).tickSize(0).tickPadding(10));
+
+
+      svg.selectAll(".tick text")
+        .attr("transform", "rotate(-45)")
+        .attr("text-anchor", "end")
+        .attr("dx", "-0.5em")
+        .attr("dy", "0.25em");
+
+      svg.append("g")
+        .attr("transform", "translate(50, 0)")
+        .call(d3.axisLeft(yScaleRank).tickSize(0).tickPadding(10))
+        .attr("class", "y-axis");
+
+      const legend = svg.append("g")
+        .attr("transform", "translate(750, 0)");
+
+      legend.selectAll(".legend-entry")
+        .data(uniqueShortNames)
+        .enter()
+        .append("g")
+        .attr("class", "legend-entry")
+        .attr("transform", (d, i) => `translate(0, ${i * 20})`)
+        .append("rect")
+        .attr("width", 10)
+        .attr("height", 10)
+        .attr("fill", d => colorScale(d));
+
+      legend.selectAll(".legend-entry")
+        .append("text")
+        .attr("x", 15)
+        .attr("y", 10)
+        .text(d => d);
+    });
+  </script>
+</body>
+</html>

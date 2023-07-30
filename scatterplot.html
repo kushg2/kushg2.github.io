@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>D3 Scatter Plot with Tooltips (Runs Filter)</title>
+  <style>
+    body {
+    font: 14px sans-serif;
+    color: black;
+    text-align: center;
+    background-color: beige;
+    }
+
+    svg {
+    display: block;
+    margin: 0 auto;  
+    }
+
+    button {
+        background-color: #4CAF50;
+        border: none;
+        color: white;
+        padding: 10px 15px;
+        text-align: center;
+        text-decoration: none;
+        display: inline-block;
+        font-size: 14px;
+    }
+    .annotation-text {
+      fill: red;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+    <div> <button onclick="window.location.href = 'line-chart-1.html';">
+        << Previous Page
+    </button></div>  
+    <br>
+  <h1> Batsman Success over the seasons</h1>
+  
+  <div>
+    The batsman are the key part of how runs are scored in the sport and understanding the success of teams involves understanding the success of the players as well. To give a better idea of some of the best players
+    in the sport, the plot below helps give an insight into where the greats of the sport stand in term of different batting statistics.
+    <br>
+    <br>
+    While success in a lot of sports is purely on who is the top scorer, in cricket, success varies on number of runs scores, the scoring rate of those runs (batting strike rate) or even the batting average (number of runs scored by number of times dismissed). These statistics vary for different batsmen based on factors such as batting position, grounds they play in or role in the team. Therefore, to get a wholistic understanding of success
+    , the scatterplot below can be modified to plot based on the statistics mentioned above. The buttons allow changing the x and y axis while mouse over each data point will give information on the player name, runs scored, matches, batting avg and strike rate. You can play around with the buttons to understand how different players fall in comparision to others over the 16 seasons of the IPL. You can also change the range of runs scored to find batsmen with similar ranges and compare their statistics by zooming into the dataset.
+  <br>
+  <br> 
+</div>
+
+  <div>
+    <button id="runs-matches-btn">Runs/Matches</button>
+    <button id="runs-batting-avg-btn">Runs/Batting Avg</button>
+    <button id="batting-strike-rate-batting-avg-btn">Batting Strike Rate/Batting Avg</button>
+  </div>
+
+  <div>
+    <br>
+    <br>
+    <label> Filter by setting Min/Max Runs </label>
+    <br>
+    <label for="min-runs">Minimum Runs:</label>
+    <input type="number" id="min-runs" value="1000">
+    <label for="max-runs">Maximum Runs:</label>
+    <input type="number" id="max-runs" value="7000">
+  </div>
+
+  <svg id="scatter-plot" width="800" height="500"></svg>
+
+  <script src="https://d3js.org/d3.v6.min.js"></script>
+
+  <script>
+    
+    d3.csv('playerstats.csv').then(data => {
+      data.forEach(d => {
+        d.runs = +d.runs;
+        d.matches = +d.matches;
+        d.batting_avg = +d.batting_avg;
+        d.batting_strike_rate = +d.batting_strike_rate;
+      });
+
+      let xValue = 'runs';
+      let yValue = 'matches';
+      let xLabel = 'Runs';
+      let yLabel = 'Matches';
+
+    
+      const margin = { top: 20, right: 20, bottom: 50, left: 70 };
+      const width = 800 - margin.left - margin.right;
+      const height = 500 - margin.top - margin.bottom;
+
+      const svg = d3.select('#scatter-plot')
+        .append('svg')
+        .attr('width', width + margin.left + margin.right)
+        .attr('height', height + margin.top + margin.bottom)
+        .append('g')
+        .attr('transform', `translate(${margin.left}, ${margin.top})`);
+
+      function updatePlot() {
+        const minRuns = +document.getElementById('min-runs').value;
+        const maxRuns = +document.getElementById('max-runs').value;
+
+        const filteredData = data.filter(d => d.runs >= minRuns && d.runs <= maxRuns);
+
+        const xScale = d3.scaleLinear()
+          .domain([0, d3.max(filteredData, d => d[xValue])])
+          .range([0, width]);
+
+        const yScale = d3.scaleLinear()
+          .domain([0, d3.max(filteredData, d => d[yValue])])
+          .range([height, 0]);
+
+        svg.selectAll('*').remove(); 
+
+        const circles = svg.selectAll('circle')
+          .data(filteredData)
+          .enter()
+          .append('circle')
+          .attr('cx', d => xScale(d[xValue]))
+          .attr('cy', d => yScale(d[yValue]))
+          .attr('r', 5)
+          .attr('fill', 'steelblue');
+
+        const tooltip = d3.select('body').append('div')
+          .style('position', 'absolute')
+          .style('padding', '8px')
+          .style('background', 'rgba(0, 0, 0, 0.7)')
+          .style('color', '#fff')
+          .style('border-radius', '5px')
+          .style('visibility', 'hidden');
+
+        circles
+          .on('mouseover', function (event, d) {
+            const { player, runs, matches, batting_avg, batting_strike_rate } = d;
+            tooltip.html(`<strong>${player}</strong><br>Runs: ${runs}<br>Matches: ${matches}<br>Batting Avg: ${batting_avg}<br>Batting Strike Rate: ${batting_strike_rate}`)
+              .style('left', `${event.pageX}px`)
+              .style('top', `${event.pageY - 60}px`)
+              .style('visibility', 'visible');
+          })
+          .on('mouseout', function () {
+            tooltip.style('visibility', 'hidden');
+          });
+
+        const xAxis = d3.axisBottom(xScale);
+        const yAxis = d3.axisLeft(yScale);
+
+        svg.append('g')
+          .attr('transform', `translate(0, ${height})`)
+          .call(xAxis)
+          .append('text')
+          .attr('x', width / 2)
+          .attr('y', 35)
+          .attr('fill', 'black')
+          .style('text-anchor', 'middle')
+          .text(xLabel);
+
+        svg.append('g')
+          .call(yAxis)
+          .append('text')
+          .attr('x', -height / 2)
+          .attr('y', -50)
+          .attr('fill', 'black')
+          .style('text-anchor', 'middle')
+          .attr('transform', 'rotate(-90)')
+          .text(yLabel); 
+     
+      }
+
+      updatePlot();
+
+      document.getElementById('min-runs').addEventListener('input', updatePlot);
+      document.getElementById('max-runs').addEventListener('input', updatePlot);
+
+      document.getElementById('runs-matches-btn').addEventListener('click', function () {
+        xValue = 'runs';
+        yValue = 'matches';
+        xLabel = 'Runs';
+        yLabel = 'Matches';
+        updatePlot();
+
+        svg.append("text")
+            .attr("class", "annotation-text")
+            .attr("x", width - 400)
+            .attr("y", height - 100)
+            .attr("dy", "0.35em")
+            .text("There is a linear trend between runs and matches for the most part");
+            svg.append("text")
+            .attr("class", "annotation-text")
+            .attr("x", width - 400)
+            .attr("y", height - 80)
+            .attr("dy", "0.35em")
+            .text("As the number of runs increases, the plot gets less crowded"); 
+
+      });
+
+      document.getElementById('runs-batting-avg-btn').addEventListener('click', function () {
+        xValue = 'runs';
+        yValue = 'batting_avg';
+        xLabel = 'Runs';
+        yLabel = 'Batting Avg';
+        updatePlot();
+
+        svg.append("text")
+            .attr("class", "annotation-text")
+            .attr("x", width - 400)
+            .attr("y", height - 100)
+            .attr("dy", "0.35em")
+            .text("Players with most runs may not have the best batting avg");
+      });
+
+      document.getElementById('batting-strike-rate-batting-avg-btn').addEventListener('click', function () {
+        xValue = 'batting_strike_rate';
+        yValue = 'batting_avg';
+        xLabel = 'Batting Strike Rate';
+        yLabel = 'Batting Avg';
+        updatePlot();
+      });
+
+    }).catch(error => {
+      console.error('Error loading data:', error);
+    });
+  </script>
+  
+</body>
+</html>
